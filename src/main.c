@@ -11,10 +11,8 @@
 #include "game.h"
 
 int main(void) {
-    printf("Switchback (skeleton)\n");
-    printf("This is a lightweight template. Implement game loop in src/main.c.\n");
-
-    /* TODO: initialize world, input, ui */
-
+    printf("Switchback — host playable demo\n");
+    game_init();
+    game_loop();
     return 0;
 }

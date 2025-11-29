@@ -14,4 +14,7 @@ void game_tick(void);
 /* Query if player has won */
 bool game_won(void);
 
+/* Run the full blocking game loop (host-mode) */
+void game_loop(void);
+
 #endif /* GAME_H */
