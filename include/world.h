@@ -53,6 +53,10 @@ void world_use_menu(void);
 /* Win check */
 bool world_check_win(void);
 
+/* Save/load game state */
+bool world_save_state(const char *filename);
+bool world_load_state(const char *filename);
+
 void world_init(void);
 void debug_print_world(void);
 

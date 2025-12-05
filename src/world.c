@@ -291,3 +291,61 @@ void debug_print_world(void) {
     printf("debug: current_room=%d\n", current_room);
 }
 
+bool world_save_state(const char *filename) {
+    FILE *f = fopen(filename, "wb");
+    if (!f) return false;
+
+    /* Save current game state: current_room, inventory, lamp_lit, room states */
+    fwrite(&current_room, sizeof(current_room), 1, f);
+    fwrite(&inventory_count, sizeof(inventory_count), 1, f);
+    fwrite(inventory, sizeof(item_t), inventory_count, f);
+    fwrite(&lamp_lit, sizeof(lamp_lit), 1, f);
+
+    /* Save dynamic room state (items taken, doors unlocked) */
+    for (int i = 0; i < 8; ++i) {
+        fwrite(&rooms[i].item, sizeof(item_t), 1, f);
+        fwrite(&rooms[i].locked, sizeof(bool), 1, f);
+    }
+
+    fclose(f);
+    return true;
+}
+
+bool world_load_state(const char *filename) {
+    FILE *f = fopen(filename, "rb");
+    if (!f) return false;
+
+    /* Load current game state */
+    if (fread(&current_room, sizeof(current_room), 1, f) != 1) {
+        fclose(f);
+        return false;
+    }
+    if (fread(&inventory_count, sizeof(inventory_count), 1, f) != 1) {
+        fclose(f);
+        return false;
+    }
+    if (fread(inventory, sizeof(item_t), inventory_count, f) != (size_t)inventory_count) {
+        fclose(f);
+        return false;
+    }
+    if (fread(&lamp_lit, sizeof(lamp_lit), 1, f) != 1) {
+        fclose(f);
+        return false;
+    }
+
+    /* Load dynamic room state */
+    for (int i = 0; i < 8; ++i) {
+        if (fread(&rooms[i].item, sizeof(item_t), 1, f) != 1) {
+            fclose(f);
+            return false;
+        }
+        if (fread(&rooms[i].locked, sizeof(bool), 1, f) != 1) {
+            fclose(f);
+            return false;
+        }
+    }
+
+    fclose(f);
+    return true;
+}
+

@@ -38,7 +38,9 @@ static void show_menu(void) {
     printf(" %d) Take item\n", base+1);
     printf(" %d) Inventory\n", base+2);
     printf(" %d) Use item\n", base+3);
-    printf(" %d) Quit\n", base+4);
+    printf(" %d) Save game\n", base+4);
+    printf(" %d) Load game\n", base+5);
+    printf(" %d) Quit\n", base+6);
     printf("Choose an action: ");
 }
 
@@ -74,7 +76,21 @@ void game_tick(void) {
         case 3: /* Use */
             world_use_menu();
             break;
-        case 4: /* Quit */
+        case 4: /* Save */
+            if (world_save_state("savegame.dat")) {
+                printf("Game saved successfully.\n");
+            } else {
+                printf("Failed to save game.\n");
+            }
+            break;
+        case 5: /* Load */
+            if (world_load_state("savegame.dat")) {
+                printf("Game loaded successfully.\n");
+            } else {
+                printf("Failed to load game (save file may not exist).\n");
+            }
+            break;
+        case 6: /* Quit */
             quit_requested = true;
             break;
         default:
