@@ -14,6 +14,7 @@ typedef enum {
 	ITEM_ART1,
 	ITEM_ART2,
 	ITEM_ART3,
+	ITEM_MASTER_KEY,
 } item_t;
 
 /* Directions: 0=N,1=E,2=S,3=W */
@@ -57,7 +58,6 @@ bool world_check_win(void);
 bool world_save_state(const char *filename);
 bool world_load_state(const char *filename);
 
-void world_init(void);
 void debug_print_world(void);
 
 #endif /* WORLD_H */

@@ -15,16 +15,19 @@ struct room {
     bool locked; /* locked when approaching this room from certain exit */
 };
 
-static struct room rooms[8];
+#define ROOM_COUNT 8
+#define MAX_INVENTORY 10
+
+static struct room rooms[ROOM_COUNT];
 static int current_room = 0;
-static item_t inventory[10];
+static item_t inventory[MAX_INVENTORY];
 static int inventory_count = 0;
 static bool lamp_lit = false;
 
 static void add_item_to_inventory(item_t it) {
     if (it == ITEM_NONE) return;
     for (int i = 0; i < inventory_count; ++i) if (inventory[i] == it) return; /* no duplicates */
-    if (inventory_count < (int)(sizeof(inventory)/sizeof(inventory[0]))) {
+    if (inventory_count < MAX_INVENTORY) {
         inventory[inventory_count++] = it;
     }
 }
@@ -124,21 +127,25 @@ void world_init(void) {
 }
 
 const char *world_get_room_name(void) {
+    if (current_room < 0 || current_room >= ROOM_COUNT) return "Unknown";
     return rooms[current_room].name;
 }
 
 const char *world_get_room_description(void) {
+    if (current_room < 0 || current_room >= ROOM_COUNT) return "You are nowhere.";
     if (rooms[current_room].dark && !lamp_lit) return "It's too dark to see anything.";
     return rooms[current_room].desc;
 }
 
 int world_get_exit_count(void) {
+    if (current_room < 0 || current_room >= ROOM_COUNT) return 0;
     int names = 0;
     for (int d = 0; d < 4; ++d) if (rooms[current_room].exits[d] != -1) ++names;
     return names;
 }
 
 const char *world_get_exit_name(int exit_index) {
+    if (current_room < 0 || current_room >= ROOM_COUNT) return "";
     int found = 0;
     for (int d = 0; d < 4; ++d) {
         if (rooms[current_room].exits[d] != -1) {
@@ -157,6 +164,7 @@ const char *world_get_exit_name(int exit_index) {
 }
 
 static int exit_index_to_dir(int exit_index) {
+    if (current_room < 0 || current_room >= ROOM_COUNT) return -1;
     int found = 0;
     for (int d = 0; d < 4; ++d) {
         if (rooms[current_room].exits[d] != -1) {
@@ -171,7 +179,7 @@ bool world_try_move(int exit_index) {
     int dir = exit_index_to_dir(exit_index);
     if (dir < 0) return false;
     int next = rooms[current_room].exits[dir];
-    if (next < 0) return false;
+    if (next < 0 || next >= ROOM_COUNT) return false;
     /* Check locked approach: if next is room 2 and it's locked, need key */
     if (next == 2 && rooms[2].locked) {
         /* check key in inventory */
@@ -193,10 +201,12 @@ bool world_try_move(int exit_index) {
 }
 
 item_t world_get_room_item(void) {
+    if (current_room < 0 || current_room >= ROOM_COUNT) return ITEM_NONE;
     return rooms[current_room].item;
 }
 
 bool world_take_room_item(void) {
+    if (current_room < 0 || current_room >= ROOM_COUNT) return false;
     item_t it = rooms[current_room].item;
     if (it == ITEM_NONE) return false;
     add_item_to_inventory(it);
@@ -206,7 +216,7 @@ bool world_take_room_item(void) {
         int count = 0;
         for (int i = 0; i < inventory_count; ++i) if (inventory[i] == ITEM_ART1 || inventory[i] == ITEM_ART2 || inventory[i] == ITEM_ART3) ++count;
         if (count >= 3) {
-            add_item_to_inventory(ITEM_KEY); /* repurpose KEY as master key for demo */
+            add_item_to_inventory(ITEM_MASTER_KEY);
             printf("You feel the artifacts resonate and form a master key!\n");
         }
     }
@@ -224,6 +234,7 @@ void world_print_inventory(void) {
             case ITEM_ART1: printf(" - Artifact (1)\n"); break;
             case ITEM_ART2: printf(" - Artifact (2)\n"); break;
             case ITEM_ART3: printf(" - Artifact (3)\n"); break;
+            case ITEM_MASTER_KEY: printf(" - Master Key\n"); break;
             default: break;
         }
     }
@@ -264,6 +275,7 @@ void world_use_menu(void) {
             case ITEM_ART1: printf("Artifact (1)\n"); break;
             case ITEM_ART2: printf("Artifact (2)\n"); break;
             case ITEM_ART3: printf("Artifact (3)\n"); break;
+            case ITEM_MASTER_KEY: printf("Master Key\n"); break;
             default: printf("Unknown\n"); break;
         }
     }
@@ -282,8 +294,9 @@ void world_use_menu(void) {
 }
 
 bool world_check_win(void) {
-    /* for demo: if player is in room 6 (gate) and has KEY (master) -> win */
-    if (current_room == 6 && world_has_item(ITEM_KEY)) return true;
+    /* Win: if player is in room 6 (gate) and has master key */
+    if (current_room >= 0 && current_room < ROOM_COUNT &&
+        current_room == 6 && world_has_item(ITEM_MASTER_KEY)) return true;
     return false;
 }
 
@@ -302,7 +315,7 @@ bool world_save_state(const char *filename) {
     fwrite(&lamp_lit, sizeof(lamp_lit), 1, f);
 
     /* Save dynamic room state (items taken, doors unlocked) */
-    for (int i = 0; i < 8; ++i) {
+    for (int i = 0; i < ROOM_COUNT; ++i) {
         fwrite(&rooms[i].item, sizeof(item_t), 1, f);
         fwrite(&rooms[i].locked, sizeof(bool), 1, f);
     }
@@ -334,7 +347,7 @@ bool world_load_state(const char *filename) {
     }
 
     /* Load dynamic room state */
-    for (int i = 0; i < 8; ++i) {
+    for (int i = 0; i < ROOM_COUNT; ++i) {
         if (fread(&rooms[i].item, sizeof(item_t), 1, f) != 1) {
             fclose(f);
             return false;
