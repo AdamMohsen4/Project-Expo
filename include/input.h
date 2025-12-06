@@ -1,11 +1,8 @@
 #ifndef INPUT_H
 #define INPUT_H
 
-/* Input abstraction: map board buttons/switches to simple actions */
-
 void input_init(void);
+int  input_peek_choice(void);
+int  input_get_action(void); /* returns choice >=1 on BTN2 press edge, else -1 */
 
-/* return an integer action code, -1 for none */
-int input_get_action(void);
-
-#endif /* INPUT_H */
+#endif
