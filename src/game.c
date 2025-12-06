@@ -1,114 +1,68 @@
-/* game.c - host-mode game wiring and loop
- * Implements a simple blocking menu loop that uses the world, ui, and input
- * abstractions. This is intended for local testing without the DTEK-V board.
- */
-
-#include <stdio.h>
-#include <stdbool.h>
-#include <string.h>
-
 #include "game.h"
-#include "world.h"
 #include "ui.h"
 #include "input.h"
+#include "world.h"
+#include "board.h"
 
-static bool quit_requested = false;
+static uint8_t last_room = 255;
 
-void game_init(void) {
-    input_init();
-    world_init();
+static void print_menu(void){
+    int n = world_exit_count();
+    ui_println("");
+    ui_println("Pick # with SW0..SW4, press BTN2.");
+    ui_print("Exits 1.."); ui_print_dec((unsigned)n); ui_println(" = move.");
+    ui_print("Look=");     ui_print_dec((unsigned)(n+1)); ui_println("");
+    ui_print("Take=");     ui_print_dec((unsigned)(n+2)); ui_println("");
+    ui_print("Use=");      ui_print_dec((unsigned)(n+3)); ui_println("");
+    ui_print("Quit=");     ui_print_dec((unsigned)(n+4)); ui_println("");
 }
 
-static void show_room(void) {
-    const char *name = world_get_room_name();
-    const char *desc = world_get_room_description();
-    ui_print_paged(name);
-    ui_print_paged(desc);
+void game_init(void){
+    ui_println("Switchback (DTEK-V)");
+    ui_println("Goal: collect 3 artifacts -> MASTER KEY -> reach Sealed Gate.");
+    ui_wait_btn2();
+    print_menu();
 }
 
-static void show_menu(void) {
-    printf("\nActions:\n");
-    int n = world_get_exit_count();
-    for (int i = 0; i < n; ++i) {
-        const char *dir = world_get_exit_name(i);
-        printf(" %d) Go %s\n", i+1, dir);
-    }
-    int base = n + 1;
-    printf(" %d) Look\n", base);
-    printf(" %d) Take item\n", base+1);
-    printf(" %d) Inventory\n", base+2);
-    printf(" %d) Use item\n", base+3);
-    printf(" %d) Save game\n", base+4);
-    printf(" %d) Load game\n", base+5);
-    printf(" %d) Quit\n", base+6);
-    printf("Choose an action: ");
+static void maybe_print_room(void){
+    uint8_t r = world_room_id();
+    if(r==last_room) return;
+    last_room = r;
+    ui_println("");
+    ui_println(world_room_name());
+    ui_println(world_room_desc());
 }
 
-void game_tick(void) {
-    show_room();
-    show_menu();
-    int choice = input_get_action();
-    if (choice <= 0) return;
-
-    int n = world_get_exit_count();
-    if (choice >= 1 && choice <= n) {
-        int dir = choice - 1;
-        if (!world_try_move(dir)) {
-            printf("You can't go that way.\n");
+void game_loop(void){
+    while(1){
+        /* HUD updates while waiting for input */
+        if(board_timer_poll_timeout()){
+            ui_hud(world_room_id(), world_inventory_count(),
+                   (uint8_t)input_peek_choice(), world_led_mask());
         }
-        return;
-    }
-    int base = n + 1;
-    switch (choice - base) {
-        case 0: /* Look */
-            ui_print_paged(world_get_room_description());
-            break;
-        case 1: /* Take */
-            if (world_take_room_item()) {
-                printf("You picked up the item.\n");
-            } else {
-                printf("There is nothing to take here.\n");
-            }
-            break;
-        case 2: /* Inventory */
-            world_print_inventory();
-            break;
-        case 3: /* Use */
-            world_use_menu();
-            break;
-        case 4: /* Save */
-            if (world_save_state("savegame.dat")) {
-                printf("Game saved successfully.\n");
-            } else {
-                printf("Failed to save game.\n");
-            }
-            break;
-        case 5: /* Load */
-            if (world_load_state("savegame.dat")) {
-                printf("Game loaded successfully.\n");
-            } else {
-                printf("Failed to load game (save file may not exist).\n");
-            }
-            break;
-        case 6: /* Quit */
-            quit_requested = true;
-            break;
-        default:
-            printf("Unknown action.\n");
-    }
-}
 
-bool game_won(void) {
-    return world_check_win() || quit_requested;
-}
+        maybe_print_room();
 
-void game_loop(void) {
-    while (!game_won()) {
-        game_tick();
-    }
-    if (world_check_win()) {
-        ui_print_paged("Congratulations — you assembled the master key and escaped!");
-    } else {
-        ui_print_paged("Goodbye.");
+        int choice = input_get_action();
+        if(choice < 0) continue;
+
+        int n = world_exit_count();
+        if(choice >= 1 && choice <= n){
+            if(!world_try_move(choice-1)){
+                ui_wait_btn2();
+            }
+        } else {
+            int cmd = choice - (n+1);
+            if(cmd==0){ ui_println(world_room_desc()); ui_wait_btn2(); }
+            else if(cmd==1){ world_take_item(); ui_wait_btn2(); }
+            else if(cmd==2){ world_use_action(); ui_wait_btn2(); }
+            else if(cmd==3){ ui_println("Bye."); break; }
+            else { ui_println("Unknown."); ui_wait_btn2(); }
+        }
+
+        if(world_check_win()){
+            ui_println("MASTER KEY accepted. Gate opens. YOU WIN.");
+            break;
+        }
     }
 }
