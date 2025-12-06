@@ -1,29 +1,21 @@
-/* input.c — board input abstraction (skeleton)
- * TODO: implement reading of buttons/switches for DTEK-V board.
- */
-
 #include "input.h"
-#include <stdio.h>
-#include <stdlib.h>
-#include <string.h>
+#include "board.h"
 
-void input_init(void) {
-    /* prepare input (placeholder) */
+static unsigned armed = 1;
+
+void input_init(void) { armed = 1; }
+
+int input_peek_choice(void) {
+    return (int)(board_get_switches() & 0x1Fu); /* SW0..SW4 */
 }
 
 int input_get_action(void) {
-    /* Host-mode input: prompt the user for a numeric choice. Returns the
-     * integer the player entered, or -1 on invalid input. This is blocking
-     * and meant for keyboard-driven testing on a host machine. For board
-     * integration replace this implementation with button reading.
-     */
-    char buf[64];
-    if (!fgets(buf, sizeof(buf), stdin)) return -1;
-    /* strip newline */
-    buf[strcspn(buf, "\r\n")] = '\0';
-    if (buf[0] == '\0') return -1;
-    char *endptr = NULL;
-    long v = strtol(buf, &endptr, 10);
-    if (endptr == buf) return -1;
-    return (int)v;
+    unsigned b = board_get_button();
+    if (!b) { armed = 1; return -1; }
+    if (b && armed) {
+        armed = 0;
+        int c = input_peek_choice();
+        return (c > 0) ? c : -1;
+    }
+    return -1;
 }
