@@ -1,0 +1,52 @@
+# Makefile for native terminal build
+# Usage: make -f Makefile.terminal
+
+CC = gcc
+CFLAGS = -Wall -Wextra -O2 -Iinclude -std=c99
+LDFLAGS =
+
+TARGET = switchback
+SOURCES = src/world.c src/game.c \
+          src/terminal/board_terminal.c src/terminal/ui_terminal.c \
+          src/terminal/input_terminal.c src/terminal/main_terminal.c
+
+OBJECTS = src/world.o src/game.o \
+          src/terminal/board_terminal.o src/terminal/ui_terminal.o \
+          src/terminal/input_terminal.o src/terminal/main_terminal.o
+
+.PHONY: all clean run
+
+all: $(TARGET)
+
+$(TARGET): $(OBJECTS)
+	$(CC) $(LDFLAGS) -o $@ $^
+	@echo ""
+	@echo "==================================="
+	@echo "Build successful!"
+	@echo "Run with: ./$(TARGET)"
+	@echo "Or: make -f Makefile.terminal run"
+	@echo "==================================="
+
+src/%.o: src/%.c
+	$(CC) $(CFLAGS) -c $< -o $@
+
+src/terminal/%.o: src/terminal/%.c
+	$(CC) $(CFLAGS) -c $< -o $@
+
+clean:
+	rm -f $(OBJECTS) $(TARGET)
+	@echo "Cleaned up build files"
+
+run: $(TARGET)
+	./$(TARGET)
+
+# Help target
+help:
+	@echo "Terminal Build Makefile"
+	@echo ""
+	@echo "Targets:"
+	@echo "  make -f Makefile.terminal       - Build the game"
+	@echo "  make -f Makefile.terminal run   - Build and run the game"
+	@echo "  make -f Makefile.terminal clean - Clean build files"
+	@echo ""
+	@echo "The game will run in your terminal with text-based input."
