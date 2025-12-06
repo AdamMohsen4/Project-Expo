@@ -1,21 +1,28 @@
-CC ?= gcc
-CFLAGS ?= -std=c11 -Wall -Iinclude -O2
-SRCS = src/main.c src/game.c src/world.c src/ui.c src/input.c
-OBJS = $(SRCS:src/%.c=build/%.o)
-TARGET = switchback
+SRC_DIR ?= ./
+OBJ_DIR ?= ./
 
-all: $(TARGET)
+SOURCES ?= boot.S dtekv-lib.c $(shell find src -name '*.c' -or -name '*.S')
 
-build/%.o: src/%.c | build
-	$(CC) $(CFLAGS) -c $< -o $@
+OBJECTS ?= $(addsuffix .o, $(basename $(notdir $(SOURCES))))
+LINKER ?= $(SRC_DIR)/dtekv-script.lds
 
-$(TARGET): $(OBJS)
-	$(CC) $(CFLAGS) $^ -o $@
+TOOLCHAIN ?= riscv32-unknown-elf-
+CFLAGS ?= -Wall -nostdlib -O3 -mabi=ilp32 -march=rv32imzicsr -fno-builtin -Iinclude
 
-build:
-	mkdir -p build
+
+build: clean main.bin
+
+main.elf: 
+	$(TOOLCHAIN)gcc -c $(CFLAGS) $(SOURCES)
+	$(TOOLCHAIN)ld -o $@ -T $(LINKER) $(filter-out boot.o, $(OBJECTS)) softfloat.a
+
+main.bin: main.elf
+	$(TOOLCHAIN)objcopy --output-target binary $< $@
+	$(TOOLCHAIN)objdump -D $< > $<.txt
 
 clean:
-	rm -rf build $(TARGET)
+	rm -f *.o *.elf *.bin *.txt
 
-.PHONY: all clean build
+TOOL_DIR ?= ./tools
+run: main.bin
+	make -C $(TOOL_DIR) "FILE_TO_RUN=$(CURDIR)/$<"
