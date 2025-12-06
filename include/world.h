@@ -22,4 +22,8 @@ uint16_t    world_led_mask(void);
 
 bool        world_check_win(void);
 
+bool        world_has_extinguisher(void);
+
+void        world_debug_give_extinguisher(void); //DEBUG
+
 #endif

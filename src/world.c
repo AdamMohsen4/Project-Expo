@@ -4,7 +4,7 @@
 enum { N=0,E=1,S=2,W=3 };
 
 typedef enum {
-    ITEM_NONE=0, ITEM_KEY, ITEM_LAMP, ITEM_BATTERY, ITEM_A1, ITEM_A2, ITEM_A3, ITEM_MASTER
+    ITEM_NONE=0, ITEM_KEY, ITEM_LAMP, ITEM_BATTERY, ITEM_EXTINGUISHER, ITEM_A1, ITEM_A2, ITEM_A3, ITEM_MASTER
 } item_t;
 
 struct room {
@@ -53,7 +53,9 @@ void world_init(void){
     r[5]=(struct room){"Maintenance","A technical room with rusty pipes and old machinery. On a metal shelf, you spot a BATTERY PACK still sealed in weathered packaging.",{8,-1,-1,3},ITEM_BATTERY,0,0};
     r[6]=(struct room){"Sealed Gate","The final chamber. A towering gate blocks the exit to freedom. At its center, an intricate mechanism awaits a MASTER KEY to unlock your escape.",{-1,-1,2,-1},ITEM_NONE,0,0};
     r[7]=(struct room){"Hidden Alcove","A narrow alcove hidden from the main path. Ancient markings cover the walls in faded script. Something glints in the shadows - an ARTIFACT (A3) embedded in the stone.",{0,-1,-1,-1},ITEM_A3,0,0};
-    r[8]=(struct room){"Control Room","An abandoned control center with dead terminals and darkened screens. A flickering holographic map shows the dungeon layout, casting eerie blue light across dust-covered consoles.",{-1,-1,5,-1},ITEM_NONE,0,0};
+    r[8]=(struct room){"Control Room",
+        "An abandoned control center with dead terminals and darkened screens. A flickering holographic map shows the dungeon layout. " "Beside a cracked console sits a red FIRE EXTINGUISHER — improbably intact.",{-1,-1,5,-1},ITEM_EXTINGUISHER,0,0
+    };
 
     cur=0; inv_n=0; lamp_lit=0;
 }
@@ -146,10 +148,19 @@ uint16_t world_led_mask(void){
     if(inv_has(ITEM_A1))     m |= (1u<<3);
     if(inv_has(ITEM_A2))     m |= (1u<<4);
     if(inv_has(ITEM_A3))     m |= (1u<<5);
+    if(inv_has(ITEM_EXTINGUISHER)) m |= (1u<<8);
     if(inv_has(ITEM_MASTER)) m |= (1u<<9);
     return m;
 }
 
 bool world_check_win(void){
     return (cur==6) && inv_has(ITEM_MASTER);
+}
+
+bool world_has_extinguisher(void){
+    return inv_has(ITEM_EXTINGUISHER) ? true : false;
+}
+ 
+void world_debug_give_extinguisher(void){ //DEBUG
+    inv_add(ITEM_EXTINGUISHER);
 }
