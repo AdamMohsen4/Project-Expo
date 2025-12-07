@@ -8,11 +8,7 @@ extern void print_dec(unsigned int);
 
 /* Helper to print const strings, handles PERF_SILENT mode */
 static void print_const(const char *s) {
-#ifndef PERF_SILENT
-  print((char*)s);
-#else
-  (void)s;
-#endif
+ print((char*)s);
 }
 
 /* Initialize UI (currently no-op) */
@@ -20,21 +16,13 @@ void ui_init(void) {}
 
 /* Print string without newline */
 void ui_print(const char *s) {
-#ifndef PERF_SILENT
   print_const(s);
-#else
-  (void)s;
-#endif
 }
 
 /* Print string followed by newline */
 void ui_println(const char *s) {
-#ifndef PERF_SILENT
   print_const(s);
   printc('\n');
-#else
-  (void)s;
-#endif
 }
 
 /* Print unsigned integer in decimal */
