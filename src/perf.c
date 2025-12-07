@@ -8,6 +8,8 @@ extern void print(char *);
 extern void printc(char);
 extern void print_dec(unsigned int);
 
+static volatile uint32_t perf_sink;
+
 #define CSR_READ(name, outvar) asm volatile("csrr %0, " #name : "=r"(outvar))
 #define CSR_ZERO(name)         asm volatile("csrw " #name ", x0")
 
@@ -136,6 +138,8 @@ static void kernel_boss_sim(unsigned steps) {
     /* keep it “alive” */
     if (popcount10(fire) == 0) fire = 1u;
   }
+  perf_sink ^= (uint32_t)fire;
+  perf_sink ^= (uint32_t)rng;
 }
 
 /* ---------------- Top-level runner ---------------- */
