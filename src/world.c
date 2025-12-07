@@ -62,7 +62,7 @@ void world_init(void){
     r[4]=(struct room){"Dark Chamber","Complete darkness engulfs everything, but the lamp is lighting the room up. Cold stone walls radiate an ancient chill. [ARTIFACT A2 darkness]",
         "Complete darkness engulfs everything, but the lamp is lighting the room up. Cold stone walls radiate an ancient chill.",
         {-1,-1,3,-1},ITEM_A2,1,0};
-    r[5]=(struct room){"Maintenance","A technical room with rusty pipes and old machinery. On a metal shelf, you spot a BATTERY PACK still sealed in weathered packaging.",
+    r[5]=(struct room){"Maintenance","A technical room with rusty pipes and old machinery. On a metal shelf, you spot some MATCHES still sealed in weathered packaging.",
         "A technical room with rusty pipes and old machinery.",
         {8,-1,-1,3},ITEM_MATCHES,0,0};
     r[6]=(struct room){"Sealed Gate","The final chamber. A towering gate blocks the exit to freedom. At its center, an intricate mechanism awaits a MASTER KEY to unlock your escape.",
