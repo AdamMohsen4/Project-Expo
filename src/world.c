@@ -64,7 +64,7 @@ void world_init(void){
         {-1,-1,3,-1},ITEM_A2,1,0};
     r[5]=(struct room){"Maintenance","A technical room with rusty pipes and old machinery. On a metal shelf, you spot a BATTERY PACK still sealed in weathered packaging.",
         "A technical room with rusty pipes and old machinery.",
-        {8,-1,-1,3},ITEM_BATTERY,0,0};
+        {8,-1,-1,3},ITEM_MATCHES,0,0};
     r[6]=(struct room){"Sealed Gate","The final chamber. A towering gate blocks the exit to freedom. At its center, an intricate mechanism awaits a MASTER KEY to unlock your escape.",
         "The final chamber. A towering gate blocks the exit to freedom. At its center, an intricate mechanism awaits a MASTER KEY to unlock your escape.",
         {-1,-1,2,-1},ITEM_NONE,0,0};
