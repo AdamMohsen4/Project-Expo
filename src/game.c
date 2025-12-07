@@ -64,7 +64,9 @@ static int boss_fire_fight(void) {
             rng = lfsr16_step(rng);
             int bit = (int)(rng % 10u);
             uint16_t m = (uint16_t)(1u << bit);
-            if (!(fire & m)) { fire |= m; break; }
+            if (!(fire & m)) { 
+                fire |= m; break; 
+            }
         }
     }
 
@@ -175,7 +177,7 @@ static void print_menu(void){
 }
 
 void game_init(void){
-    ui_println("=== SWITCHBACK ===");
+    ui_println("=== GET OUT ===");
     ui_println("");
     ui_println("You awaken in an ancient dungeon.");
     ui_println("To escape, you must:");

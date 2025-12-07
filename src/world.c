@@ -10,6 +10,7 @@ typedef enum {
 struct room {
     const char *name;
     const char *desc;
+    const char *desc_done; 
     int8_t exits[4];
     item_t item;
     uint8_t dark;
@@ -45,16 +46,34 @@ static void inv_remove(item_t it){
 }
 
 void world_init(void){
-    r[0]=(struct room){"Entrance","A dusty stone entrance hall. An old LAMP rests on the floor near crumbling pillars. Passages lead east and south into darkness.",{-1,1,7,-1},ITEM_LAMP,0,0};
-    r[1]=(struct room){"Hallway","A long corridor with weathered stone walls. To the north, a massive sealed door shows signs of an ancient lock mechanism. Doorways branch east and west.",{2,3,-1,0},ITEM_NONE,0,0};
-    r[2]=(struct room){"Locked Chamber","A sealed chamber marked with protective symbols. The air hums with residual energy. An ancient ARTIFACT (A1) hovers on a pedestal, pulsing with blue light.",{6,-1,1,-1},ITEM_A1,0,1};
-    r[3]=(struct room){"Supply Closet","A cluttered storage room filled with scattered equipment and broken crates. Among the debris, a brass KEY hangs from a rusted hook on the wall.",{4,5,-1,1},ITEM_KEY,0,0};
-    r[4]=(struct room){"Dark Chamber","Complete darkness engulfs everything. Cold stone walls radiate an ancient chill. You sense something valuable is here, but cannot see without light. [ARTIFACT A2 hidden in darkness]",{-1,-1,3,-1},ITEM_A2,1,0};
-    r[5]=(struct room){"Maintenance","A technical room with rusty pipes and old machinery. On a metal shelf, you spot a BATTERY PACK still sealed in weathered packaging.",{8,-1,-1,3},ITEM_BATTERY,0,0};
-    r[6]=(struct room){"Sealed Gate","The final chamber. A towering gate blocks the exit to freedom. At its center, an intricate mechanism awaits a MASTER KEY to unlock your escape.",{-1,-1,2,-1},ITEM_NONE,0,0};
-    r[7]=(struct room){"Hidden Alcove","A narrow alcove hidden from the main path. Ancient markings cover the walls in faded script. Something glints in the shadows - an ARTIFACT (A3) embedded in the stone.",{0,-1,-1,-1},ITEM_A3,0,0};
-    r[8]=(struct room){"Control Room",
-        "An abandoned control center with dead terminals and darkened screens. A flickering holographic map shows the dungeon layout. " "Beside a cracked console sits a red FIRE EXTINGUISHER — improbably intact.",{-1,-1,5,-1},ITEM_EXTINGUISHER,0,0
+    r[0]=(struct room){"Entrance", 
+        "A dusty stone entrance hall. An old LAMP rests on the floor near crumbling pillars. Passages lead east and south into darkness.", 
+        "A dusty stone entrance hall. Passages lead east and south into darkness.", 
+        {-1,1,7,-1},ITEM_LAMP,0,0};
+    r[1]=(struct room){"Hallway","A long corridor with weathered stone walls. To the north, a massive sealed door shows signs of an ancient lock mechanism. Doorways branch east and west.",
+        "A long corridor with weathered stone walls. To the north, a massive sealed door shows signs of an ancient lock mechanism. Doorways branch east and west.",
+        {2,3,-1,0},ITEM_NONE,0,0};
+    r[2]=(struct room){"Locked Chamber","A sealed chamber marked with protective symbols. An ancient ARTIFACT (A1) hovers on a pedestal, pulsing with blue light.",
+        "A sealed chamber marked with protective symbols.",
+        {6,-1,1,-1},ITEM_A1,0,1};
+    r[3]=(struct room){"Supply Closet","A cluttered storage room filled with scattered equipment and broken crates. Among the debris, a brass KEY hangs from a rusted hook on the wall.",
+        "A cluttered storage room filled with scattered equipment and broken crates.",
+        {4,5,-1,1},ITEM_KEY,0,0};
+    r[4]=(struct room){"Dark Chamber","Complete darkness engulfs everything, but the lamp is lighting the room up. Cold stone walls radiate an ancient chill. [ARTIFACT A2 darkness]",
+        "Complete darkness engulfs everything, but the lamp is lighting the room up. Cold stone walls radiate an ancient chill.",
+        {-1,-1,3,-1},ITEM_A2,1,0};
+    r[5]=(struct room){"Maintenance","A technical room with rusty pipes and old machinery. On a metal shelf, you spot a BATTERY PACK still sealed in weathered packaging.",
+        "A technical room with rusty pipes and old machinery.",
+        {8,-1,-1,3},ITEM_BATTERY,0,0};
+    r[6]=(struct room){"Sealed Gate","The final chamber. A towering gate blocks the exit to freedom. At its center, an intricate mechanism awaits a MASTER KEY to unlock your escape.",
+        "The final chamber. A towering gate blocks the exit to freedom. At its center, an intricate mechanism awaits a MASTER KEY to unlock your escape.",
+        {-1,-1,2,-1},ITEM_NONE,0,0};
+    r[7]=(struct room){"Hidden Alcove","A narrow alcove hidden from the main path. Ancient markings cover the walls in faded script. Something glints in the shadows, an ARTIFACT (A3) embedded in the stone.",
+        "A narrow alcove hidden from the main path. Ancient markings cover the walls in faded script.",
+        {0,-1,-1,-1},ITEM_A3,0,0};
+    r[8]=(struct room){"Control Room","An abandoned control center with dead terminals and darkened screens. Beside a cracked console sits a red fire extinguisher.",
+        "An abandoned control center with dead terminals and darkened screens.",
+        {-1,-1,5,-1},ITEM_EXTINGUISHER,0,0
     };
 
     cur=0; inv_n=0; lamp_lit=0;
@@ -64,6 +83,7 @@ uint8_t world_room_id(void){ return (uint8_t)cur; }
 const char *world_room_name(void){ return r[cur].name; }
 const char *world_room_desc(void){
     if (r[cur].dark && !lamp_lit) return "It's too dark to see anything.";
+    if (r[cur].item == ITEM_NONE && r[cur].desc_done) return r[cur].desc_done;
     return r[cur].desc;
 }
 
