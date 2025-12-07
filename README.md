@@ -11,10 +11,12 @@ An interactive text-based dungeon adventure for the DTEK-V board.
    ```
    Note: In vm terminal
 3. **Build and upload** the game:
+
    ```bash
    make clean 
    make
    ```
+
 4. **Open a terminal** to see the game output (text will display via serial connection)
 
 The game will start automatically and display the introduction.
