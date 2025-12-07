@@ -1,13 +1,14 @@
+// Authors: Adam Mohsen, Hjalmar Albinsson
 #include "game.h"
 #include "ui.h"
 #include "input.h"
 #include "world.h"
 #include "board.h"
 
+/* Track room changes for printing */
 static uint8_t last_room = 255;
 
-/* --- helpers --- */
-
+/* 16-bit LFSR (Linear Feedback Shift Register) */
 static uint16_t lfsr16_step(uint16_t x) {
     unsigned lsb = x & 1u;
     x >>= 1;
@@ -15,6 +16,7 @@ static uint16_t lfsr16_step(uint16_t x) {
     return x;
 }
 
+/* Count set bits in lower 10 bits */
 static int popcount10(uint16_t x) {
     int c = 0;
     x &= 0x03FFu;
@@ -22,7 +24,7 @@ static int popcount10(uint16_t x) {
     return c;
 }
 
-/* Local button edge detector for boss fight (separate from input.c’s armed state) */
+/* Separate button handler for boss fight */
 static int btn_edge_pressed_local(void) {
     static unsigned armed = 1;
     unsigned b = board_get_button();
@@ -31,15 +33,16 @@ static int btn_edge_pressed_local(void) {
     return 0;
 }
 
+/* Restore normal HUD after boss fight */
 static void restore_normal_io(void) {
-    /* Force exit from “fire mode”: restore normal HUD + inventory LEDs immediately */
     ui_hud(world_room_id(),
            world_inventory_count(),
            (uint8_t)input_peek_choice(),
            world_led_mask());
 }
 
-/* Returns 1 if boss cleared, 0 if failed */
+// Hjalmar
+/* Boss fight minigame - extinguish spreading flames */
 static int boss_fire_fight(void) {
     ui_println("");
     ui_println("As you open the gate ready to leave, you trip on a root.");
@@ -53,32 +56,31 @@ static int boss_fire_fight(void) {
     ui_println("");
     ui_wait_btn2();
 
-    /* Seed RNG from switches so it feels different each run */
+    /* Seed RNG from switches */
     uint16_t rng = (uint16_t)(board_get_switches() ^ 0xACE1u);
     if (rng == 0) rng = 0x1u;
 
-    /* Start with a few flames */
+    /* Light 3 random flames */
     uint16_t fire = 0;
     for (int i = 0; i < 3; ++i) {
         for (int tries = 0; tries < 20; ++tries) {
             rng = lfsr16_step(rng);
             int bit = (int)(rng % 10u);
             uint16_t m = (uint16_t)(1u << bit);
-            if (!(fire & m)) { 
-                fire |= m; break; 
+            if (!(fire & m)) {
+                fire |= m; break;
             }
         }
     }
 
-    /* Enter fire mode: override LEDs */
     board_set_leds(fire);
 
-    /* Spread once per second (10 * 100ms) */
+    /* Fire spreads every 5 seconds */
     const int SPREAD_EVERY = 50;
     int spread_acc = 0;
 
     while (1) {
-        /* Spray action is immediate on BTN2 edge */
+        /* Player spray action */
         if (btn_edge_pressed_local()) {
             int target = (int)(board_get_switches() & 0x0Fu);
             if (target > 9) target = 9;
@@ -89,14 +91,11 @@ static int boss_fire_fight(void) {
             }
         }
 
-        /* Tick boss logic on timer */
+        /* Update boss state on timer tick */
         if (board_timer_poll_timeout()) {
             spread_acc++;
 
-            /* Boss HUD on HEX:
-               HEX0-1 = target
-               HEX2-3 = flames count
-               HEX4-5 = room id (still 6, so player knows “final gate”) */
+            /* Update HUD: target, flame count, room */
             int target = (int)(board_get_switches() & 0x0Fu);
             if (target > 9) target = 9;
 
@@ -105,11 +104,10 @@ static int boss_fire_fight(void) {
             board_set_hex_2dec(2, (uint8_t)flames);
             board_set_hex_2dec(4, world_room_id());
 
-            /* Spread */
+            /* Spread fire periodically */
             if (spread_acc >= SPREAD_EVERY) {
                 spread_acc = 0;
 
-                /* Add one new flame on a random unlit LED */
                 for (int tries = 0; tries < 25; ++tries) {
                     rng = lfsr16_step(rng);
                     int bit = (int)(rng % 10u);
@@ -119,7 +117,7 @@ static int boss_fire_fight(void) {
                 board_set_leds(fire);
             }
 
-            /* Win / Lose */
+            /* Check win/lose conditions */
             if ((fire & 0x03FFu) == 0) {
                 ui_println("");
                 ui_println("You choke the last flame into smoke.");
@@ -141,8 +139,8 @@ static int boss_fire_fight(void) {
     }
 }
 
-/* --- existing UI helpers --- */
-
+// Adam:
+/* Print available exits from current room */
 static void print_exits(void){
     int n = world_exit_count();
     if(n == 0){
@@ -159,6 +157,7 @@ static void print_exits(void){
     ui_println("");
 }
 
+/* Print command menu */
 static void print_menu(void){
     int n = world_exit_count();
     ui_println("");
@@ -176,6 +175,7 @@ static void print_menu(void){
     ui_println("");
 }
 
+/* Display game intro and instructions */
 void game_init(void){
     ui_println("=== GET OUT ===");
     ui_println("");
@@ -192,6 +192,7 @@ void game_init(void){
     print_menu();
 }
 
+/* Print room info when entering new room */
 static void maybe_print_room(void){
     uint8_t r = world_room_id();
     if(r==last_room) return;
@@ -207,9 +208,11 @@ static void maybe_print_room(void){
     print_menu();
 }
 
+// Adam:
+/* Main game loop */
 void game_loop(void){
     while(1){
-        /* Normal HUD updates */
+        /* Update HUD on timer tick */
         if(board_timer_poll_timeout()){
             ui_hud(world_room_id(), world_inventory_count(),
                    (uint8_t)input_peek_choice(), world_led_mask());
@@ -220,12 +223,14 @@ void game_loop(void){
         int choice = input_get_action();
         if(choice < 0) continue;
 
+        /* Handle movement commands */
         int n = world_exit_count();
         if(choice >= 1 && choice <= n){
             if(!world_try_move(choice-1)){
                 ui_wait_btn2();
             }
         } else {
+            /* Handle action commands */
             int cmd = choice - (n+1);
             if(cmd==0){
                 ui_println("");
@@ -245,16 +250,15 @@ void game_loop(void){
             else { ui_println("Unknown command."); ui_wait_btn2(); }
         }
 
+        /* Check win condition and trigger boss fight */
         if(world_check_win()){
             ui_println("");
             ui_println("================================");
             ui_println("    THE GATE OPENS...");
             ui_println("================================");
 
-            /* Boss replaces instant win */
             int won = boss_fire_fight();
 
-            /* IMPORTANT: leave fire mode immediately */
             restore_normal_io();
 
             if (won) {
@@ -267,7 +271,6 @@ void game_loop(void){
                 ui_println("Press BTN2 to restart for the next player...");
                 ui_wait_btn2();
 
-                /* Reset entire game state (items/bools/locks/etc.) */
                 world_init();
                 last_room = 255;
                 restore_normal_io();
@@ -278,7 +281,6 @@ void game_loop(void){
                 ui_println("Press BTN2 to try again...");
                 ui_wait_btn2();
 
-                /* Reset entire game state (items/bools/locks/etc.) */
                 world_init();
                 last_room = 255;
                 restore_normal_io();

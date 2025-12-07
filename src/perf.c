@@ -3,20 +3,19 @@
 #include "board.h"
 #include "world.h"
 
-/* lab printf helpers (ui wraps them, but we want exact control) */
+/* Direct access to print functions for perf output */
 extern void print(char *);
 extern void printc(char);
 extern void print_dec(unsigned int);
 
 static volatile uint32_t perf_sink;
 
+/* CSR access macros */
 #define CSR_READ(name, outvar) asm volatile("csrr %0, " #name : "=r"(outvar))
 #define CSR_ZERO(name)         asm volatile("csrw " #name ", x0")
 
+/* Zero all performance counters */
 void perf_clear_all(void) {
-  /* If your core supports mcountinhibit and it’s nonzero, you can zero it:
-     asm volatile("csrw mcountinhibit, x0");
-     (Leave out if assembler complains.) */
   CSR_ZERO(mcycle);
   CSR_ZERO(minstret);
   CSR_ZERO(mhpmcounter3);
@@ -28,6 +27,7 @@ void perf_clear_all(void) {
   CSR_ZERO(mhpmcounter9);
 }
 
+/* Read all counters into struct */
 void perf_read_all(perf_t *p) {
   CSR_READ(mcycle,       p->cycles);
   CSR_READ(minstret,     p->instret);
@@ -42,9 +42,8 @@ void perf_read_all(perf_t *p) {
 
 static void print_str(const char *s){ print((char*)s); }
 
+/* Print perf data as CSV row */
 void perf_print_csv(const char *tag, const perf_t *p) {
-  /* Easy to paste into Excel:
-     tag,cycles,instret,mem,ic_miss,dc_miss,ic_stall,dc_stall,haz,alu */
   print_str(tag); printc(',');
   print_dec(p->cycles); printc(',');
   print_dec(p->instret); printc(',');
@@ -57,12 +56,9 @@ void perf_print_csv(const char *tag, const perf_t *p) {
   print_dec(p->alu_stall); printc('\n');
 }
 
-/* ---------------- Bench kernels ---------------- */
+/* Benchmark kernels */
 
-/* This avoids UART prints in world.c affecting results:
-   compile perf build with -DPERF_SILENT and make ui_print... no-op (see section D). */
-
-/* scripted “win path” to stress your actual world logic */
+/* Scripted game win path - tests world logic */
 static void kernel_win_path(unsigned iters) {
   for (unsigned t = 0; t < iters; t++) {
     world_init();
@@ -103,13 +99,15 @@ static void kernel_win_path(unsigned iters) {
   }
 }
 
-/* LFSR + popcount + modulo/div-heavy logic: good for mhpmcounter9 */
+/* 16-bit LFSR for pseudo-random numbers */
 static uint16_t lfsr16_step(uint16_t x) {
   unsigned lsb = x & 1u;
   x >>= 1;
-  if (lsb) x ^= 0xB400u;
+  if (lsb) x ^= 0xB400u;  /* Tap polynomial */
   return x;
 }
+
+/* Count set bits in lower 10 bits */
 static int popcount10(uint16_t x) {
   int c = 0;
   x &= 0x03FFu;
@@ -117,33 +115,30 @@ static int popcount10(uint16_t x) {
   return c;
 }
 
+/* Boss fight simulator - stresses ALU with modulo/div ops */
 static void kernel_boss_sim(unsigned steps) {
   uint16_t rng = 0xACE1u;
-  uint16_t fire = 0x0007u; /* start with 3 flames */
+  uint16_t fire = 0x0007u;
 
   for (unsigned i = 0; i < steps; i++) {
     rng = lfsr16_step(rng);
 
-    /* spray */
-    unsigned target = (unsigned)(rng % 10u);      /* modulo => possible div/rem */
+    unsigned target = (unsigned)(rng % 10u);
     fire &= (uint16_t)~(1u << target);
 
-    /* spread occasionally */
     if ((i & 31u) == 0u) {
       unsigned bit = (unsigned)((rng >> 3) % 10u);
       fire |= (uint16_t)(1u << bit);
       fire &= 0x03FFu;
     }
 
-    /* keep it “alive” */
     if (popcount10(fire) == 0) fire = 1u;
   }
   perf_sink ^= (uint32_t)fire;
   perf_sink ^= (uint32_t)rng;
 }
 
-/* ---------------- Top-level runner ---------------- */
-
+/* Run single benchmark and print results */
 static void run_one(const char *tag, void (*fn)(unsigned), unsigned n) {
   perf_t p;
   perf_clear_all();
@@ -152,11 +147,11 @@ static void run_one(const char *tag, void (*fn)(unsigned), unsigned n) {
   perf_print_csv(tag, &p);
 }
 
+/* Main benchmark entry point */
 void perf_run_benchmarks(void) {
   print_str("\n=== PERF MODE (SW9=1) ===\n");
   print_str("CSV: tag,cycles,instret,mem,ic_miss,dc_miss,ic_stall,dc_stall,haz,alu\n");
 
-  /* Warm-up (optional): */
   kernel_win_path(10);
   kernel_boss_sim(200);
 
