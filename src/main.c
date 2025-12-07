@@ -8,6 +8,7 @@
 void handle_interrupt(unsigned cause) { (void)cause; }
 void labinit(void) {}
 
+/* Main entry point - initializes systems and runs game or benchmarks */
 int main(void){
     board_init();
 
@@ -15,7 +16,8 @@ int main(void){
     if (board_get_switches() & (1u << 9)) {
         perf_run_benchmarks();
     }
-   
+
+    /* Initialize game systems */
     input_init();
     world_init();
     game_init();

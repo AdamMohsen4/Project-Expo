@@ -3,16 +3,28 @@
 
 #include <stdint.h>
 
+/* Initialize board hardware - LEDs, hex displays, and timer */
 void board_init(void);
 
-uint16_t board_get_switches(void); /* 10 LSBs */
-uint8_t  board_get_button(void);   /* BTN2 bit0 */
+/* Read switch values - returns 10 LSBs */
+uint16_t board_get_switches(void);
 
+/* Read BTN2 state - returns bit0 */
+uint8_t  board_get_button(void);
+
+/* Set LED pattern from mask */
 void board_set_leds(uint16_t mask);
-void board_set_hex_digit(int idx, int digit);      /* idx 0..5, digit 0..9 or -1 blank */
-void board_set_hex_2dec(int start_idx, uint8_t v); /* two decimal digits */
 
+/* Set single hex digit (idx 0..5, digit 0..9 or -1 for blank) */
+void board_set_hex_digit(int idx, int digit);
+
+/* Set two decimal digits starting at index */
+void board_set_hex_2dec(int start_idx, uint8_t v);
+
+/* Initialize hardware timer for 100ms intervals */
 void board_timer_init_100ms(void);
-int  board_timer_poll_timeout(void); /* 1 if timeout (and clears), else 0 */
+
+/* Check and clear timer timeout - returns 1 if timeout occurred, else 0 */
+int  board_timer_poll_timeout(void);
 
 #endif

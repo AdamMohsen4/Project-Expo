@@ -1,17 +1,20 @@
 #include "world.h"
 #include "ui.h"
 
+/* Direction indices */
 enum { N=0,E=1,S=2,W=3 };
 
+/* Game items */
 typedef enum {
     ITEM_NONE=0, ITEM_KEY, ITEM_LAMP, ITEM_MATCHES, ITEM_EXTINGUISHER, ITEM_A1, ITEM_A2, ITEM_A3, ITEM_MASTER
 } item_t;
 
+/* Room structure */
 struct room {
     const char *name;
     const char *desc;
-    const char *desc_done; 
-    int8_t exits[4];
+    const char *desc_done;  /* Description after item taken */
+    int8_t exits[4];        /* N,E,S,W exits (-1 if blocked) */
     item_t item;
     uint8_t dark;
     uint8_t locked;
@@ -20,21 +23,27 @@ struct room {
 #define ROOMS 9
 #define INV_MAX 10
 
+/* World state */
 static struct room r[ROOMS];
 static int8_t cur;
 static item_t inv[INV_MAX];
 static uint8_t inv_n;
 static uint8_t lamp_lit;
 
+/* Check if item is in inventory */
 static int inv_has(item_t it){
     for (uint8_t i=0;i<inv_n;i++) if (inv[i]==it) return 1;
     return 0;
 }
+
+/* Add item to inventory (no duplicates) */
 static void inv_add(item_t it){
     if (!it) return;
     if (inv_has(it)) return;
     if (inv_n<INV_MAX) inv[inv_n++]=it;
 }
+
+/* Remove item from inventory */
 static void inv_remove(item_t it){
     for (uint8_t i=0;i<inv_n;i++){
         if (inv[i]==it){
@@ -45,6 +54,7 @@ static void inv_remove(item_t it){
     }
 }
 
+/* Initialize all rooms and reset game state */
 void world_init(void){
     r[0]=(struct room){"Entrance", 
         "A dusty stone entrance hall. An old LAMP rests on the floor near crumbling pillars. Passages lead east and south into darkness.", 
@@ -81,18 +91,24 @@ void world_init(void){
 
 uint8_t world_room_id(void){ return (uint8_t)cur; }
 const char *world_room_name(void){ return r[cur].name; }
+
+/* Get room description based on darkness and item state */
 const char *world_room_desc(void){
     if (r[cur].dark && !lamp_lit) return "It's too dark to see anything.";
     if (r[cur].item == ITEM_NONE && r[cur].desc_done) return r[cur].desc_done;
     return r[cur].desc;
 }
 
+/* Convert direction enum to string */
 static const char *dirn(int d){ return d==N?"north":d==E?"east":d==S?"south":"west"; }
 
+/* Count available exits in current room */
 int world_exit_count(void){
     int n=0; for(int d=0;d<4;d++) if(r[cur].exits[d]!=-1) n++;
     return n;
 }
+
+/* Get direction name for exit at given index */
 const char *world_exit_name(int exit_index){
     int k=0;
     for(int d=0;d<4;d++) if(r[cur].exits[d]!=-1){
@@ -101,6 +117,8 @@ const char *world_exit_name(int exit_index){
     }
     return "";
 }
+
+/* Convert exit index to direction enum */
 static int exit_idx_to_dir(int exit_index){
     int k=0;
     for(int d=0;d<4;d++) if(r[cur].exits[d]!=-1){
@@ -110,16 +128,19 @@ static int exit_idx_to_dir(int exit_index){
     return -1;
 }
 
+/* Try to move through exit - handles locks and darkness */
 bool world_try_move(int exit_index){
     int d = exit_idx_to_dir(exit_index);
     if(d<0) return false;
     int next = r[cur].exits[d];
     if(next<0 || next>=ROOMS) return false;
 
+    /* Check locked chamber */
     if(next==2 && r[2].locked){
         if(inv_has(ITEM_KEY)){ r[2].locked=0; ui_println("Unlocked."); }
         else { ui_println("Locked. Need key."); return false; }
     }
+    /* Check dark chamber */
     if(next==4 && r[4].dark && !lamp_lit){
         ui_println("Too dark. Need a lit lamp.");
         return false;
@@ -128,12 +149,14 @@ bool world_try_move(int exit_index){
     return true;
 }
 
+/* Pick up item in current room */
 bool world_take_item(void){
     item_t it = r[cur].item;
     if(it==ITEM_NONE){ ui_println("Nothing here."); return false; }
     r[cur].item = ITEM_NONE;
     inv_add(it);
 
+    /* Check if artifacts fuse into master key */
     if(it==ITEM_A1||it==ITEM_A2||it==ITEM_A3){
         int c = inv_has(ITEM_A1)+inv_has(ITEM_A2)+inv_has(ITEM_A3);
         if(c>=3 && !inv_has(ITEM_MASTER)){
@@ -148,6 +171,7 @@ bool world_take_item(void){
     return true;
 }
 
+/* Use items (light lamp with matches) */
 void world_use_action(void){
     if(!lamp_lit && inv_has(ITEM_LAMP) && inv_has(ITEM_MATCHES)){
         inv_remove(ITEM_MATCHES);
@@ -160,6 +184,7 @@ void world_use_action(void){
 
 uint8_t world_inventory_count(void){ return inv_n; }
 
+/* Build LED mask from inventory state */
 uint16_t world_led_mask(void){
     uint16_t m=0;
     if(inv_has(ITEM_KEY))    m |= (1u<<0);
@@ -173,6 +198,7 @@ uint16_t world_led_mask(void){
     return m;
 }
 
+/* Check if player has won */
 bool world_check_win(void){
     return (cur==6) && inv_has(ITEM_MASTER);
 }
