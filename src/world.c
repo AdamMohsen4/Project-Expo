@@ -4,7 +4,7 @@
 enum { N=0,E=1,S=2,W=3 };
 
 typedef enum {
-    ITEM_NONE=0, ITEM_KEY, ITEM_LAMP, ITEM_BATTERY, ITEM_EXTINGUISHER, ITEM_A1, ITEM_A2, ITEM_A3, ITEM_MASTER
+    ITEM_NONE=0, ITEM_KEY, ITEM_LAMP, ITEM_MATCHES, ITEM_EXTINGUISHER, ITEM_A1, ITEM_A2, ITEM_A3, ITEM_MASTER
 } item_t;
 
 struct room {
@@ -50,7 +50,7 @@ void world_init(void){
     r[2]=(struct room){"Locked Chamber","A sealed chamber marked with protective symbols. The air hums with residual energy. An ancient ARTIFACT (A1) hovers on a pedestal, pulsing with blue light.",{6,-1,1,-1},ITEM_A1,0,1};
     r[3]=(struct room){"Supply Closet","A cluttered storage room filled with scattered equipment and broken crates. Among the debris, a brass KEY hangs from a rusted hook on the wall.",{4,5,-1,1},ITEM_KEY,0,0};
     r[4]=(struct room){"Dark Chamber","Complete darkness engulfs everything. Cold stone walls radiate an ancient chill. You sense something valuable is here, but cannot see without light. [ARTIFACT A2 hidden in darkness]",{-1,-1,3,-1},ITEM_A2,1,0};
-    r[5]=(struct room){"Maintenance","A technical room with rusty pipes and old machinery. On a metal shelf, you spot a BATTERY PACK still sealed in weathered packaging.",{8,-1,-1,3},ITEM_BATTERY,0,0};
+    r[5]=(struct room){"Maintenance","A technical room with rusty pipes and old machinery. On a metal shelf, you spot some MATCHES still sealed in weathered packaging.",{8,-1,-1,3},ITEM_MATCHES,0,0};
     r[6]=(struct room){"Sealed Gate","The final chamber. A towering gate blocks the exit to freedom. At its center, an intricate mechanism awaits a MASTER KEY to unlock your escape.",{-1,-1,2,-1},ITEM_NONE,0,0};
     r[7]=(struct room){"Hidden Alcove","A narrow alcove hidden from the main path. Ancient markings cover the walls in faded script. Something glints in the shadows - an ARTIFACT (A3) embedded in the stone.",{0,-1,-1,-1},ITEM_A3,0,0};
     r[8]=(struct room){"Control Room",
@@ -129,8 +129,8 @@ bool world_take_item(void){
 }
 
 void world_use_action(void){
-    if(!lamp_lit && inv_has(ITEM_LAMP) && inv_has(ITEM_BATTERY)){
-        inv_remove(ITEM_BATTERY);
+    if(!lamp_lit && inv_has(ITEM_LAMP) && inv_has(ITEM_MATCHES)){
+        inv_remove(ITEM_MATCHES);
         lamp_lit=1;
         ui_println("Lamp lit.");
         return;
