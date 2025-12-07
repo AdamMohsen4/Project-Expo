@@ -1,4 +1,4 @@
-# Switchback - Text Adventure Game
+# GET OUT! - Text Adventure Game
 
 An interactive text-based dungeon adventure for the DTEK-V board.
 
