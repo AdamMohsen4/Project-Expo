@@ -1,6 +1,6 @@
 #include "input.h"
 #include "board.h"
-
+// Author: Adam Mohsen
 /* Edge detection state - prevents repeated reads from held button */
 static unsigned armed = 1;
 

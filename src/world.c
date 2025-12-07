@@ -1,3 +1,4 @@
+// Authors: Adam Mohsen, Hjalmar Albinsson. Concurrent contributions. 
 #include "world.h"
 #include "ui.h"
 

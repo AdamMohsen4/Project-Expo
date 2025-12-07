@@ -1,3 +1,4 @@
+// Authors: Adam Mohsen, Hjalmar Albinsson
 #include "game.h"
 #include "ui.h"
 #include "input.h"
@@ -40,6 +41,7 @@ static void restore_normal_io(void) {
            world_led_mask());
 }
 
+// Hjalmar
 /* Boss fight minigame - extinguish spreading flames */
 static int boss_fire_fight(void) {
     ui_println("");
@@ -137,6 +139,7 @@ static int boss_fire_fight(void) {
     }
 }
 
+// Adam:
 /* Print available exits from current room */
 static void print_exits(void){
     int n = world_exit_count();
@@ -205,6 +208,7 @@ static void maybe_print_room(void){
     print_menu();
 }
 
+// Adam:
 /* Main game loop */
 void game_loop(void){
     while(1){

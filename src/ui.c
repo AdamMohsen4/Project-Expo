@@ -1,6 +1,6 @@
 #include "ui.h"
 #include "board.h"
-
+// Author: Adam Mohsen, Hjalmar Albinsson
 /* From dtekv-lib.c (signatures are non-const) */
 extern void print(char *);
 extern void printc(char);

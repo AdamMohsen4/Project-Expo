@@ -1,3 +1,4 @@
+// Author: Hjalmar Albinsson 
 #include "board.h"
 
 /* Memory-mapped I/O addresses for board peripherals */
