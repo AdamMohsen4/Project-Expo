@@ -6,15 +6,32 @@ extern void print(char *);
 extern void printc(char);
 extern void print_dec(unsigned int);
 
-static void print_const(const char *s) { print((char*)s); }
+static void print_const(const char *s) {
+#ifndef PERF_SILENT
+  print((char*)s);
+#else
+  (void)s;
+#endif
+}
+
 
 void ui_init(void) {}
 
-void ui_print(const char *s) { print_const(s); }
+void ui_print(const char *s) {
+#ifndef PERF_SILENT
+  print_const(s);
+#else
+  (void)s;
+#endif
+}
 
 void ui_println(const char *s) {
-    print_const(s);
-    printc('\n');
+#ifndef PERF_SILENT
+  print_const(s);
+  printc('\n');
+#else
+  (void)s;
+#endif
 }
 
 void ui_print_dec(unsigned x) {
