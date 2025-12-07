@@ -4,7 +4,7 @@
 enum { N=0,E=1,S=2,W=3 };
 
 typedef enum {
-    ITEM_NONE=0, ITEM_KEY, ITEM_LAMP, ITEM_BATTERY, ITEM_EXTINGUISHER, ITEM_A1, ITEM_A2, ITEM_A3, ITEM_MASTER
+    ITEM_NONE=0, ITEM_KEY, ITEM_LAMP, ITEM_MATCHES, ITEM_EXTINGUISHER, ITEM_A1, ITEM_A2, ITEM_A3, ITEM_MASTER
 } item_t;
 
 struct room {
@@ -149,8 +149,8 @@ bool world_take_item(void){
 }
 
 void world_use_action(void){
-    if(!lamp_lit && inv_has(ITEM_LAMP) && inv_has(ITEM_BATTERY)){
-        inv_remove(ITEM_BATTERY);
+    if(!lamp_lit && inv_has(ITEM_LAMP) && inv_has(ITEM_MATCHES)){
+        inv_remove(ITEM_MATCHES);
         lamp_lit=1;
         ui_println("Lamp lit.");
         return;
