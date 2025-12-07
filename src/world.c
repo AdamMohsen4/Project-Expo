@@ -160,7 +160,3 @@ bool world_check_win(void){
 bool world_has_extinguisher(void){
     return inv_has(ITEM_EXTINGUISHER) ? true : false;
 }
- 
-void world_debug_give_extinguisher(void){ //DEBUG
-    inv_add(ITEM_EXTINGUISHER);
-}

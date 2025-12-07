@@ -6,10 +6,9 @@
 
 static uint8_t last_room = 255;
 
-/* --- Boss fight helpers (no stdlib) --- */
+/* --- helpers --- */
 
 static uint16_t lfsr16_step(uint16_t x) {
-    /* 16-bit Galois LFSR */
     unsigned lsb = x & 1u;
     x >>= 1;
     if (lsb) x ^= 0xB400u;
@@ -23,7 +22,8 @@ static int popcount10(uint16_t x) {
     return c;
 }
 
-static int btn_edge_pressed(void) {
+/* Local button edge detector for boss fight (separate from input.c’s armed state) */
+static int btn_edge_pressed_local(void) {
     static unsigned armed = 1;
     unsigned b = board_get_button();
     if (!b) { armed = 1; return 0; }
@@ -31,38 +31,34 @@ static int btn_edge_pressed(void) {
     return 0;
 }
 
-/* Returns 1 if won, 0 if lost */
-static int boss_fire_fight(void) {
-    /* Require extinguisher */
-    if (!world_has_extinguisher()) {
-        ui_println("You reach for something—anything—to stop the flames...");
-        ui_println("But you have no fire extinguisher.");
-        ui_println("The roots burn faster than you can react.");
-        ui_println("");
-        ui_println("*** YOU LOSE ***");
-        return 0;
-    }
+static void restore_normal_io(void) {
+    /* Force exit from “fire mode”: restore normal HUD + inventory LEDs immediately */
+    ui_hud(world_room_id(),
+           world_inventory_count(),
+           (uint8_t)input_peek_choice(),
+           world_led_mask());
+}
 
+/* Returns 1 if boss cleared, 0 if failed */
+static int boss_fire_fight(void) {
     ui_println("");
-    ui_println("As you push the gate open, you trip on a thick root.");
-    ui_println("The lamp shatters—oil splashes—and the roots IGNITE.");
-    ui_println("Fire crawls across the floor like living veins.");
+    ui_println("As you open the gate ready to leave, you trip on a root.");
+    ui_println("You fall — the lamp shatters — oil splashes.");
+    ui_println("The roots catch fire and the flames spread fast.");
     ui_println("");
-    ui_println("BOSS FIGHT: PUT OUT THE FIRE");
-    ui_println("LEDs = flames. They will spread.");
-    ui_println("Use SW0..SW3 to choose an LED index (0-9).");
-    ui_println("Press BTN2 to spray that LED (turn it off).");
-    ui_println("Extinguish ALL flames before they fill the board!");
-    ui_println("Press BTN2 to try proceed!");
+    ui_println("BOSS FIGHT: PUT OUT THE FIRE!");
+    ui_println("LEDs = flames. They will spread until everything is burning.");
+    ui_println("Use SW0..SW3 to pick a LED index (0-9). BTN2 sprays it.");
+    ui_println("Extinguish all flames to escape!");
     ui_println("");
     ui_wait_btn2();
 
-    /* Fire uses LEDs directly (override inventory LEDs) */
-    uint16_t fire = 0;
+    /* Seed RNG from switches so it feels different each run */
     uint16_t rng = (uint16_t)(board_get_switches() ^ 0xACE1u);
     if (rng == 0) rng = 0x1u;
 
-    /* Ignite a few starting flames */
+    /* Start with a few flames */
+    uint16_t fire = 0;
     for (int i = 0; i < 3; ++i) {
         for (int tries = 0; tries < 20; ++tries) {
             rng = lfsr16_step(rng);
@@ -72,71 +68,16 @@ static int boss_fire_fight(void) {
         }
     }
 
+    /* Enter fire mode: override LEDs */
     board_set_leds(fire);
 
-    /* Timer: 30 seconds total, spreads every 1 second */
-    const int TICKS_LIMIT = 300;     /* 30s @ 100ms */
-    const int SPREAD_EVERY = 50;     /* 5s */
-    int ticks = 0;
+    /* Spread once per second (10 * 100ms) */
+    const int SPREAD_EVERY = 50;
     int spread_acc = 0;
 
     while (1) {
-        if (board_timer_poll_timeout()) {
-            ticks++;
-            spread_acc++;
-
-            /* HUD for boss: HEX0-1 = target, HEX2-3 = flames count, HEX4-5 = seconds left */
-            int target = (int)(board_get_switches() & 0x0Fu);
-            if (target > 9) target = 9;
-
-            int flames = popcount10(fire);
-            int secs_left = (TICKS_LIMIT - ticks) / 10;
-            if (secs_left < 0) secs_left = 0;
-
-            board_set_hex_2dec(0, (uint8_t)target);
-            board_set_hex_2dec(2, (uint8_t)flames);
-            board_set_hex_2dec(4, (uint8_t)secs_left);
-
-            /* Spread */
-            if (spread_acc >= SPREAD_EVERY) {
-                spread_acc = 0;
-
-                /* Add one new flame on a random unlit LED */
-                int placed = 0;
-                for (int tries = 0; tries < 25; ++tries) {
-                    rng = lfsr16_step(rng);
-                    int bit = (int)(rng % 10u);
-                    uint16_t m = (uint16_t)(1u << bit);
-                    if (!(fire & m)) { fire |= m; placed = 1; break; }
-                }
-                (void)placed;
-            }
-
-            board_set_leds(fire);
-
-            /* Lose if full fire or time out */
-            if ((fire & 0x03FFu) == 0x03FFu || ticks >= TICKS_LIMIT) {
-                ui_println("");
-                ui_println("The flames race across the roots—too fast.");
-                ui_println("The exit is swallowed by fire.");
-                ui_println("");
-                ui_println("*** YOU LOSE ***");
-                return 0;
-            }
-
-            /* Win if no fire left */
-            if ((fire & 0x03FFu) == 0) {
-                ui_println("");
-                ui_println("You choke the last flame into smoke.");
-                ui_println("The roots blacken and crumble.");
-                ui_println("");
-                ui_println("*** FIRE EXTINGUISHED ***");
-                return 1;
-            }
-        }
-
-        /* Player action: BTN2 clears selected LED if on fire */
-        if (btn_edge_pressed()) {
+        /* Spray action is immediate on BTN2 edge */
+        if (btn_edge_pressed_local()) {
             int target = (int)(board_get_switches() & 0x0Fu);
             if (target > 9) target = 9;
             uint16_t m = (uint16_t)(1u << target);
@@ -145,10 +86,60 @@ static int boss_fire_fight(void) {
                 board_set_leds(fire);
             }
         }
+
+        /* Tick boss logic on timer */
+        if (board_timer_poll_timeout()) {
+            spread_acc++;
+
+            /* Boss HUD on HEX:
+               HEX0-1 = target
+               HEX2-3 = flames count
+               HEX4-5 = room id (still 6, so player knows “final gate”) */
+            int target = (int)(board_get_switches() & 0x0Fu);
+            if (target > 9) target = 9;
+
+            int flames = popcount10(fire);
+            board_set_hex_2dec(0, (uint8_t)target);
+            board_set_hex_2dec(2, (uint8_t)flames);
+            board_set_hex_2dec(4, world_room_id());
+
+            /* Spread */
+            if (spread_acc >= SPREAD_EVERY) {
+                spread_acc = 0;
+
+                /* Add one new flame on a random unlit LED */
+                for (int tries = 0; tries < 25; ++tries) {
+                    rng = lfsr16_step(rng);
+                    int bit = (int)(rng % 10u);
+                    uint16_t m = (uint16_t)(1u << bit);
+                    if (!(fire & m)) { fire |= m; break; }
+                }
+                board_set_leds(fire);
+            }
+
+            /* Win / Lose */
+            if ((fire & 0x03FFu) == 0) {
+                ui_println("");
+                ui_println("You choke the last flame into smoke.");
+                ui_println("The roots blacken and crumble.");
+                ui_println("");
+                ui_println("*** FIRE EXTINGUISHED ***");
+                return 1;
+            }
+
+            if ((fire & 0x03FFu) == 0x03FFu) {
+                ui_println("");
+                ui_println("The fire races through the roots.");
+                ui_println("Everything burns. The exit is lost.");
+                ui_println("");
+                ui_println("*** YOU LOSE ***");
+                return 0;
+            }
+        }
     }
 }
 
-/* --- Existing UI helpers --- */
+/* --- existing UI helpers --- */
 
 static void print_exits(void){
     int n = world_exit_count();
@@ -194,9 +185,6 @@ void game_init(void){
     ui_println("2. They will fuse into a MASTER KEY");
     ui_println("3. Reach the Sealed Gate to escape");
     ui_println("");
-    ui_println("Explore, solve puzzles, collect");
-    ui_println("items. Good luck, adventurer.");
-    ui_println("");
     ui_println("Press BTN2 to begin...");
     ui_wait_btn2();
     print_menu();
@@ -219,7 +207,7 @@ static void maybe_print_room(void){
 
 void game_loop(void){
     while(1){
-        /* HUD updates while waiting for input */
+        /* Normal HUD updates */
         if(board_timer_poll_timeout()){
             ui_hud(world_room_id(), world_inventory_count(),
                    (uint8_t)input_peek_choice(), world_led_mask());
@@ -229,31 +217,6 @@ void game_loop(void){
 
         int choice = input_get_action();
         if(choice < 0) continue;
-
-        if (choice == 31) {
-            ui_println("");
-            ui_println("[DEBUG] Boss fire fight test mode.");
-            ui_println("Set SW0..SW3 to choose LED, BTN2 to spray.");
-            ui_wait_btn2();
-            world_debug_give_extinguisher();
-            ui_println("[DEBUG] Fire extinguisher granted.");
-
-            /* Call the same boss fight as the real ending */
-            extern int boss_fire_fight(void); /* or move the prototype up if needed */
-            {
-                int won = boss_fire_fight();
-                if (won) {
-                    ui_println("[DEBUG] Boss cleared (world state unchanged).");
-                } else {
-                    ui_println("[DEBUG] Boss failed (world state unchanged).");
-                }
-                ui_println("Press BTN2 to return to the dungeon...");
-                ui_wait_btn2();
-            }
-            /* Skip normal command handling this loop */
-            continue;
-        }
-
 
         int n = world_exit_count();
         if(choice >= 1 && choice <= n){
@@ -275,7 +238,6 @@ void game_loop(void){
             else if(cmd==3){
                 ui_println("");
                 ui_println("Thanks for playing SWITCHBACK!");
-                ui_println("See you next time, adventurer.");
                 break;
             }
             else { ui_println("Unknown command."); ui_wait_btn2(); }
@@ -286,34 +248,38 @@ void game_loop(void){
             ui_println("================================");
             ui_println("    THE GATE OPENS...");
             ui_println("================================");
-            ui_println("");
 
-            /* Boss fight replaces instant-win */
+            /* Boss replaces instant win */
             int won = boss_fire_fight();
+
+            /* IMPORTANT: leave fire mode immediately */
+            restore_normal_io();
 
             if (won) {
                 ui_println("");
                 ui_println("================================");
                 ui_println("    VICTORY ACHIEVED!");
                 ui_println("================================");
+                ui_println("The path is clear. You escape into sunlight.");
                 ui_println("");
-                ui_println("The MASTER KEY holds. The path is clear.");
-                ui_println("You step into sunlight—free at last.");
-                ui_println("");
-                ui_println("*** YOU WIN ***");
-                ui_println("");
-                break;
+                ui_println("Press BTN2 to restart for the next player...");
+                ui_wait_btn2();
+
+                /* Reset entire game state (items/bools/locks/etc.) */
+                world_init();
+                last_room = 255;
+                restore_normal_io();
+                print_menu();
             } else {
                 ui_println("");
                 ui_println("You blink—and find yourself back at the entrance.");
-                ui_println("The dungeon resets its cruel loop.");
-                ui_println("");
                 ui_println("Press BTN2 to try again...");
                 ui_wait_btn2();
 
-                /* Restart game state */
+                /* Reset entire game state (items/bools/locks/etc.) */
                 world_init();
                 last_room = 255;
+                restore_normal_io();
                 print_menu();
             }
         }
