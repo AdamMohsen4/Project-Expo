@@ -7,10 +7,10 @@
 void handle_interrupt(unsigned cause) { (void)cause; }
 void labinit(void) {}
 
-/* Main entry point - initializes systems and runs game or benchmarks */
+/* Main entry point, initializes systems and runs game or benchmarks */
 int main(void){
     board_init();
-    
+
     /* Initialize game systems */
     input_init();
     world_init();

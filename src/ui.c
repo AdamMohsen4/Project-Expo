@@ -6,7 +6,7 @@ extern void print(char *);
 extern void printc(char);
 extern void print_dec(unsigned int);
 
-/* Helper to print const strings, handles PERF_SILENT mode */
+/* Helper to print const strings */
 static void print_const(const char *s) {
  print((char*)s);
 }

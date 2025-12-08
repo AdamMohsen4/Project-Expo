@@ -230,7 +230,7 @@ void game_loop(void){
                 ui_wait_btn2();
             }
         } else {
-            /* Handle action commands */
+            /* Handle action commands */ 
             int cmd = choice - (n+1);
             if(cmd==0){
                 ui_println("");
